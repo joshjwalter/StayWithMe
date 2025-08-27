@@ -8,7 +8,6 @@ import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.joshwalter.staywithme.databinding.ActivityMainBinding
-
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
@@ -33,3 +32,5 @@ class MainActivity : AppCompatActivity() {
         navView.setupWithNavController(navController)
     }
 }
+
+//testing commit
