@@ -1,6 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+    
+    <!-- SMS permissions -->
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    
+    <!-- Location permissions -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    
+    <!-- Phone permissions -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    
+    <!-- Internet for emergency services -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    
+    <!-- Wake lock for emergency monitoring -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    
+    <!-- Notification permissions -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    
+    <!-- Foreground service permissions -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
     <application
         android:allowBackup="true"
@@ -13,14 +37,20 @@
         android:theme="@style/Theme.StayWithMe">
         <activity
             android:name=".MainActivity"
-            android:exported="true"
-            android:label="@string/app_name">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        
+        <!-- Background monitoring service -->
+        <service
+            android:name=".service.CheckInMonitoringService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+            
     </application>
 
 </manifest>
