@@ -182,12 +182,13 @@ class EmergencyNotificationService(private val context: Context) {
         }
         
         val contacts = database.emergencyContactDao().getActiveContactsList()
+        val userInfo = database.userInfoDao().getUserInfoSync()
+        val session = database.checkInSessionDao().getCurrentSessionSync()
         val smsManager = context.getSystemService(SmsManager::class.java)
         
         contacts.forEach { contact ->
             try {
-                val message = "EMERGENCY: ${context.getString(R.string.app_name)} user may need assistance. " +
-                        "They haven't checked in as scheduled. Please check on them immediately."
+                val message = buildEmergencyMessage(userInfo, session)
                 
                 smsManager.sendTextMessage(
                     contact.phoneNumber,
@@ -222,5 +223,44 @@ class EmergencyNotificationService(private val context: Context) {
                 )
             }
         }
+    }
+    
+    private fun buildEmergencyMessage(userInfo: com.joshwalter.staywithme.data.model.UserInfo?, session: com.joshwalter.staywithme.data.model.CheckInSession?): String {
+        val userName = userInfo?.name ?: "StayWithMe user"
+        val medicalInfo = userInfo?.medicalInfo ?: ""
+        val customMessage = userInfo?.customAlertMessage ?: ""
+        val location = session?.location
+        val substances = session?.substances ?: ""
+        
+        // Use custom message if provided, otherwise use default
+        var message = if (customMessage.isNotEmpty()) {
+            customMessage
+        } else {
+            "EMERGENCY: This is an automated alert from $userName's safety app. Their timer has expired and they are unresponsive."
+        }
+        
+        // Replace placeholders in custom message
+        message = message.replace("[Your Name]", userName)
+        message = message.replace("[Medical Info text here]", medicalInfo)
+        
+        // Add medical information if not already included
+        if (medicalInfo.isNotEmpty() && !message.contains(medicalInfo)) {
+            message += "\n\nMedical Information: $medicalInfo"
+        }
+        
+        // Add substance information if available
+        if (substances.isNotEmpty()) {
+            message += "\n\nSubstances: $substances"
+        }
+        
+        // Add location if available
+        if (location != null && location.isNotEmpty()) {
+            val locationLink = "https://maps.google.com/?q=$location"
+            message += "\n\nLast known location: $locationLink"
+        }
+        
+        message += "\n\nPlease check on them immediately."
+        
+        return message
     }
 }
