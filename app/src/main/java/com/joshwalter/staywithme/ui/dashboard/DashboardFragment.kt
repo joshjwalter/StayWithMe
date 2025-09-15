@@ -1,10 +1,16 @@
 package com.joshwalter.staywithme.ui.dashboard
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.provider.ContactsContract
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -24,6 +30,26 @@ class DashboardFragment : Fragment() {
     
     private lateinit var dashboardViewModel: DashboardViewModel
     private lateinit var contactsAdapter: EmergencyContactsAdapter
+    
+    private val contactPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            result.data?.let { data ->
+                handleContactPickerResult(data)
+            }
+        }
+    }
+    
+    private val contactsPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            openContactPicker()
+        } else {
+            Toast.makeText(context, "Contacts permission is required to pick from address book", Toast.LENGTH_LONG).show()
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -71,6 +97,21 @@ class DashboardFragment : Fragment() {
     }
     
     private fun showAddContactDialog() {
+        val options = arrayOf("Enter Manually", "Pick from Contacts")
+        
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Add Emergency Contact")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> showManualContactDialog()
+                    1 -> requestContactsPermissionAndPick()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    private fun showManualContactDialog() {
         val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_add_contact, null)
         val nameField = dialogView.findViewById<TextInputEditText>(R.id.et_contact_name)
         val phoneField = dialogView.findViewById<TextInputEditText>(R.id.et_contact_phone)
@@ -90,6 +131,53 @@ class DashboardFragment : Fragment() {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+    
+    private fun requestContactsPermissionAndPick() {
+        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+            openContactPicker()
+        } else {
+            contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+        }
+    }
+    
+    private fun openContactPicker() {
+        val intent = Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)
+        contactPickerLauncher.launch(intent)
+    }
+    
+    private fun handleContactPickerResult(data: android.content.Intent) {
+        val contactUri = data.data
+        if (contactUri != null) {
+            val cursor = requireContext().contentResolver.query(
+                contactUri,
+                arrayOf(
+                    ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                    ContactsContract.CommonDataKinds.Phone.NUMBER
+                ),
+                null,
+                null,
+                null
+            )
+            
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val nameIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                    val phoneIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                    
+                    if (nameIndex >= 0 && phoneIndex >= 0) {
+                        val name = it.getString(nameIndex)
+                        val phone = it.getString(phoneIndex)
+                        
+                        if (!name.isNullOrEmpty() && !phone.isNullOrEmpty()) {
+                            addContact(name, phone)
+                        } else {
+                            Toast.makeText(context, "Could not retrieve contact information", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+        }
     }
     
     private fun showEditContactDialog(contact: EmergencyContact) {

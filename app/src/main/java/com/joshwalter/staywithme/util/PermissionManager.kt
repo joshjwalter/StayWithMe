@@ -18,6 +18,7 @@ class PermissionManager {
                 Manifest.permission.ACCESS_COARSE_LOCATION,
                 Manifest.permission.SEND_SMS,
                 Manifest.permission.CALL_PHONE,
+                Manifest.permission.READ_CONTACTS,
                 Manifest.permission.POST_NOTIFICATIONS
             )
         } else {
@@ -25,7 +26,8 @@ class PermissionManager {
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION,
                 Manifest.permission.SEND_SMS,
-                Manifest.permission.CALL_PHONE
+                Manifest.permission.CALL_PHONE,
+                Manifest.permission.READ_CONTACTS
             )
         }
         
@@ -68,6 +70,10 @@ class PermissionManager {
             } else {
                 true // Not required on older versions
             }
+        }
+        
+        fun hasContactsPermission(context: Context): Boolean {
+            return ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
         }
         
         fun requestPermissions(

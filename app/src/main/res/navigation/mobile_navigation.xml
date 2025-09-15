@@ -22,4 +22,16 @@
         android:name="com.joshwalter.staywithme.ui.notifications.NotificationsFragment"
         android:label="@string/title_notifications"
         tools:layout="@layout/fragment_notifications" />
+
+    <fragment
+        android:id="@+id/navigation_my_info"
+        android:name="com.joshwalter.staywithme.ui.myinfo.MyInfoFragment"
+        android:label="My Info"
+        tools:layout="@layout/fragment_my_info" />
+
+    <fragment
+        android:id="@+id/navigation_welcome"
+        android:name="com.joshwalter.staywithme.ui.welcome.WelcomeFragment"
+        android:label="Welcome"
+        tools:layout="@layout/fragment_welcome" />
 </navigation>

@@ -8,6 +8,7 @@ import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.joshwalter.staywithme.databinding.ActivityMainBinding
+import com.joshwalter.staywithme.ui.welcome.WelcomeFragment
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
@@ -20,12 +21,20 @@ class MainActivity : AppCompatActivity() {
 
         val navView: BottomNavigationView = binding.navView
 
-        val navController = findNavController(R.id.nav_host_fragment_activity_main)
+        // Get the NavHostFragment first, then get its NavController
+        val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as androidx.navigation.fragment.NavHostFragment
+        val navController = navHostFragment.navController
+        
+        // Check if welcome screen should be shown
+        if (WelcomeFragment.shouldShowWelcome(this)) {
+            navController.navigate(R.id.navigation_welcome)
+        }
+        
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
         val appBarConfiguration = AppBarConfiguration(
             setOf(
-                R.id.navigation_home, R.id.navigation_dashboard, R.id.navigation_notifications
+                R.id.navigation_home, R.id.navigation_dashboard, R.id.navigation_notifications, R.id.navigation_my_info
             )
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
