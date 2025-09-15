@@ -73,7 +73,12 @@ class EmergencyNotificationService(private val context: Context) {
             LEVEL_GENTLE -> showGentleReminder(sessionId)
             LEVEL_URGENT -> showUrgentNotification(sessionId)
             LEVEL_EMERGENCY -> showEmergencyNotification(sessionId)
-            LEVEL_SMS_CALL -> sendEmergencySMS(sessionId)
+            LEVEL_SMS_CALL -> {
+                showFinalWarningNotification(sessionId)
+                // Wait 2 minutes before sending SMS
+                kotlinx.coroutines.delay(2 * 60 * 1000L)
+                sendEmergencySMS(sessionId)
+            }
         }
         
         // Log the notification
@@ -176,18 +181,61 @@ class EmergencyNotificationService(private val context: Context) {
         }
     }
     
+    private fun showFinalWarningNotification(sessionId: Long) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        val notification = NotificationCompat.Builder(context, URGENT_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("FINAL WARNING: Check In Now!")
+            .setContentText("Emergency contacts will be alerted in 2 minutes if you don't check in")
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(false)
+            .setOngoing(true)
+            .setVibrate(longArrayOf(2000, 1000, 2000, 1000, 2000))
+            .setSound(android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI)
+            .build()
+            
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_BASE + 4, notification)
+        }
+    }
+    
     private suspend fun sendEmergencySMS(sessionId: Long) {
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
             return
         }
         
         val contacts = database.emergencyContactDao().getActiveContactsList()
+        val userInfo = database.userInfoDao().getUserInfo()
+        val currentSession = database.checkInSessionDao().getCurrentSessionSync()
         val smsManager = context.getSystemService(SmsManager::class.java)
         
         contacts.forEach { contact ->
             try {
-                val message = "EMERGENCY: ${context.getString(R.string.app_name)} user may need assistance. " +
-                        "They haven't checked in as scheduled. Please check on them immediately."
+                // Get location information
+                val locationInfo = getLocationInfo(currentSession)
+                
+                // Use custom message if available, otherwise use default
+                val message = if (!userInfo?.customAlertMessage.isNullOrEmpty()) {
+                    userInfo!!.customAlertMessage + locationInfo
+                } else {
+                    val userName = userInfo?.name ?: "StayWithMe user"
+                    val medicalInfo = if (!userInfo?.medicalInfo.isNullOrEmpty()) {
+                        "\nMedical Info: ${userInfo!!.medicalInfo}"
+                    } else ""
+                    "EMERGENCY: $userName may need assistance. They haven't checked in as scheduled. Please check on them immediately.$medicalInfo$locationInfo"
+                }
                 
                 smsManager.sendTextMessage(
                     contact.phoneNumber,
@@ -222,5 +270,21 @@ class EmergencyNotificationService(private val context: Context) {
                 )
             }
         }
+    }
+    
+    private fun getLocationInfo(session: com.joshwalter.staywithme.data.model.CheckInSession?): String {
+        if (session?.location.isNullOrEmpty()) {
+            return "\n\nLocation: Unable to determine current location"
+        }
+        
+        val locationParts = session!!.location!!.split(",")
+        if (locationParts.size == 2) {
+            val latitude = locationParts[0].trim()
+            val longitude = locationParts[1].trim()
+            val mapLink = "https://maps.google.com/?q=$latitude,$longitude"
+            return "\n\nLocation: $latitude, $longitude\nMap: $mapLink"
+        }
+        
+        return "\n\nLocation: ${session.location}"
     }
 }

@@ -110,15 +110,26 @@ class CheckInWorker(
         val database = StayWithMeDatabase.getDatabase(applicationContext)
         val currentSession = database.checkInSessionDao().getCurrentSessionSync()
         
+        android.util.Log.d("CheckInWorker", "Worker running - session active: ${currentSession?.isActive}")
+        
         if (currentSession != null && currentSession.isActive) {
             val timeSinceLastCheckIn = currentSession.lastCheckIn?.let { 
                 Date().time - it.time 
             } ?: (Date().time - currentSession.startTime.time)
             
-            val checkInIntervalMs = 30 * 60 * 1000L // 30 minutes
-            val urgentThresholdMs = 45 * 60 * 1000L // 45 minutes
-            val emergencyThresholdMs = 60 * 60 * 1000L // 1 hour
-            val smsThresholdMs = 90 * 60 * 1000L // 1.5 hours
+            // Get user's custom check-in interval, default to 30 minutes
+            val userInfo = database.userInfoDao().getUserInfo()
+            val checkInIntervalMinutes = userInfo?.checkInIntervalMinutes ?: 30
+            
+            // Calculate escalation thresholds based on user's check-in interval
+            val urgentThresholdMinutes = (checkInIntervalMinutes * 1.5).toInt() // Urgent after 1.5x interval
+            val emergencyThresholdMinutes = checkInIntervalMinutes * 2 // Emergency after 2x interval
+            val smsThresholdMinutes = checkInIntervalMinutes * 3 // SMS after 3x interval
+            
+            val checkInIntervalMs = checkInIntervalMinutes * 60 * 1000L
+            val urgentThresholdMs = urgentThresholdMinutes * 60 * 1000L
+            val emergencyThresholdMs = emergencyThresholdMinutes * 60 * 1000L
+            val smsThresholdMs = smsThresholdMinutes * 60 * 1000L
             
             val notificationService = EmergencyNotificationService(applicationContext)
             

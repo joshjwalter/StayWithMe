@@ -11,6 +11,7 @@ import com.joshwalter.staywithme.data.database.StayWithMeDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 class LocationTrackingService(private val context: Context) {
     
@@ -83,8 +84,14 @@ class LocationTrackingService(private val context: Context) {
         }
         
         return try {
-            fusedLocationClient.lastLocation.result
+            // Use withTimeout to avoid hanging on incomplete tasks
+            withTimeout(5000) { // 5 second timeout
+                fusedLocationClient.lastLocation.result
+            }
         } catch (e: SecurityException) {
+            null
+        } catch (e: Exception) {
+            // Handle any other exceptions including timeout
             null
         }
     }
